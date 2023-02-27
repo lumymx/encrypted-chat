@@ -49,11 +49,27 @@ func main() {
 		return
 	}
 	port = strings.TrimSpace(port)
-	fmt.Println(ip)
-	conn, err := net.Dial("tcp", ip+":"+port)
-	if err != nil {
-		fmt.Println(err)
-		return
+	var (
+		conn net.Conn
+		ln   net.Listener
+	)
+	if ip == "localhost" {
+		ln, err := net.Listen("tcp", ":8080")
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		conn, err = ln.Accept()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+	} else {
+		conn, err = net.Dial("tcp", ip+":"+port)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 	}
 	defer conn.Close()
 	client := newClient(conn, "User")
@@ -66,6 +82,14 @@ func main() {
 				return
 			}
 			fmt.Println(msg)
+			if ip == "localhost" {
+				conn, err = ln.Accept()
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
+				client.conn = conn
+			}
 		}
 	}()
 
