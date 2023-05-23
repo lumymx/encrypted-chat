@@ -10,8 +10,8 @@ func EncryptMessage(message, key, iv []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	stream := cipher.NewCFBEncrypter(block, iv)
 	encryptedMessage := make([]byte, len(message))
+	stream := cipher.NewCFBEncrypter(block, iv)
 	stream.XORKeyStream(encryptedMessage, message)
 	return encryptedMessage, nil
 }
@@ -21,8 +21,8 @@ func DecryptMessage(encryptedMessage, key, iv []byte) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	stream := cipher.NewCFBDecrypter(block, iv)
 	decryptedMessage := make([]byte, len(encryptedMessage))
+	stream := cipher.NewCFBDecrypter(block, iv)
 	stream.XORKeyStream(decryptedMessage, encryptedMessage)
-	return encryptedMessage, nil
+	return decryptedMessage, nil
 }

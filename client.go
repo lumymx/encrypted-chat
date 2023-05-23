@@ -56,7 +56,7 @@ func (c *Client) Run(key, iv []byte) error {
 			if parts[0] == "/nick" {
 				if len(parts) > 1 {
 					c.nick = strings.Join(parts[1:], " ")
-					fmt.Printf("Your nickname is %s now", c.nick)
+					fmt.Printf("Your nickname is %s now\n", c.nick)
 				} else {
 					fmt.Println("Please enter your nickname")
 				}

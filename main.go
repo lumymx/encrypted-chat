@@ -24,7 +24,7 @@ func main() {
 		return
 	}
 
-	fmt.Print("Create a new chat room (y/n)?")
+	fmt.Print("Create a new chat room (y/n)? ")
 	createRoom, err := bufio.NewReader(os.Stdin).ReadString('\n')
 	if err != nil {
 		fmt.Println(err)
@@ -49,10 +49,8 @@ func main() {
 		return
 	}
 	port = strings.TrimSpace(port)
-	var (
-		conn net.Conn
-		ln   net.Listener
-	)
+
+	var conn net.Conn
 	if ip == "localhost" {
 		ln, err := net.Listen("tcp", ":8080")
 		if err != nil {
@@ -64,14 +62,16 @@ func main() {
 			fmt.Println(err)
 			return
 		}
+		defer ln.Close()
 	} else {
 		conn, err = net.Dial("tcp", ip+":"+port)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
+		defer conn.Close()
 	}
-	defer conn.Close()
+
 	client := newClient(conn, "User")
 
 	go func() {
@@ -83,6 +83,11 @@ func main() {
 			}
 			fmt.Println(msg)
 			if ip == "localhost" {
+				ln, err := net.Listen("tcp", ":8080")
+				if err != nil {
+					fmt.Println(err)
+					return
+				}
 				conn, err = ln.Accept()
 				if err != nil {
 					fmt.Println(err)
