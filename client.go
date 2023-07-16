@@ -6,74 +6,60 @@ import (
 	"net"
 	"os"
 	"strings"
+	"time"
 )
 
 type Client struct {
 	conn   net.Conn
 	nick   string
 	reader *bufio.Reader
+	key    []byte
+	iv     []byte
 }
 
-func newClient(conn net.Conn, nick string) *Client {
+func NewClient(conn net.Conn, nick string, key, iv []byte) (*Client, error) {
 	return &Client{
 		conn:   conn,
 		nick:   nick,
-		reader: bufio.NewReader(conn),
-	}
+		reader: bufio.NewReader(os.Stdin),
+		key:    key,
+		iv:     iv,
+	}, nil
 }
 
-func (c *Client) ReadMessage(key, iv []byte) (string, error) {
-	encryptedMessage, err := c.reader.ReadBytes('\n')
-	if err != nil {
-		return "", err
-	}
-	message, err := DecryptMessage(encryptedMessage, key, iv)
-	if err != nil {
-		return "", err
-	}
-	return string(message), nil
-}
-
-func (c *Client) Run(key, iv []byte) error {
+func (c *Client) Run() error {
+	fmt.Println("Welcome to the chat room!")
 	for {
-		fmt.Print("Enter your message or a command: ")
-		input, err := bufio.NewReader(os.Stdin).ReadString('\n')
+		msg, err := c.reader.ReadString('\n')
 		if err != nil {
-			fmt.Println(err)
 			return err
 		}
-		if input[0] == '/' {
-			if input == "/help\n" {
-				fmt.Print("help -- display this message\n",
-					"quit -- close the app\n",
-					"nick [your nickname] -- choose a nickname\n")
-				continue
-			}
-			if input == "/quit\n" {
-				return nil
-			}
-			parts := strings.Split(input, " ")
-			if parts[0] == "/nick" {
-				if len(parts) > 1 {
-					c.nick = strings.Join(parts[1:], " ")
-					fmt.Printf("Your nickname is %s now\n", c.nick)
-				} else {
-					fmt.Println("Please enter your nickname")
-				}
-				continue
-			} else {
-				fmt.Println("Undefined command.")
-			}
+		msg = strings.TrimSpace(msg)
+		if msg == "/quit" {
+			return nil
 		}
-		encryptedMessage, err := EncryptMessage([]byte(input), key, iv)
+		encryptedMsg, err := EncryptMessage([]byte(msg), c.key, c.iv)
 		if err != nil {
-			fmt.Println(err)
 			return err
 		}
-		_, err = c.conn.Write(encryptedMessage)
-		if err != nil {
-			fmt.Println(err)
+		if _, err := c.conn.Write(encryptedMsg); err != nil {
 			return err
 		}
 	}
+}
+
+func (c *Client) ReadMessage() (string, error) {
+	encryptedMsg := make([]byte, 1024)
+	if err != nil {
+		return "", err
+	}
+	n, err := c.conn.Read(encryptedMsg)
+	if err != nil {
+		return "", err
+	}
+	decryptedMsg, err := DecryptMessage(encryptedMsg[:n], c.key, c.iv)
+	if err != nil {
+		return "", err
+	}
+	return string(decryptedMsg), nil
 }

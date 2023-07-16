@@ -2,10 +2,7 @@ package main
 
 import (
 	"bufio"
-	"crypto/aes"
-	"crypto/rand"
 	"fmt"
-	"io"
 	"net"
 	"os"
 	"strings"
@@ -13,13 +10,8 @@ import (
 
 func main() {
 	var ip, port string
-	key := make([]byte, 32)
-	iv := make([]byte, aes.BlockSize)
-	if _, err := io.ReadFull(rand.Reader, key); err != nil {
-		fmt.Println(err)
-		return
-	}
-	if _, err := io.ReadFull(rand.Reader, iv); err != nil {
+	key, iv, err := GenerateKeyAndIV()
+	if err != nil {
 		fmt.Println(err)
 		return
 	}
@@ -52,11 +44,12 @@ func main() {
 
 	var conn net.Conn
 	if ip == "localhost" {
-		ln, err := net.Listen("tcp", ":8080")
+		ln, err := net.Listen("tcp", ":"+port)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
+		fmt.Println("Listening on port " + port + "...")
 		conn, err = ln.Accept()
 		if err != nil {
 			fmt.Println(err)
@@ -72,33 +65,24 @@ func main() {
 		defer conn.Close()
 	}
 
-	client := newClient(conn, "User")
+	client, err := NewClient(conn, "User", key, iv)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
 
 	go func() {
 		for {
-			msg, err := client.ReadMessage(key, iv)
+			msg, err := client.ReadMessage()
 			if err != nil {
 				fmt.Println(err)
 				return
 			}
 			fmt.Println(msg)
-			if ip == "localhost" {
-				ln, err := net.Listen("tcp", ":8080")
-				if err != nil {
-					fmt.Println(err)
-					return
-				}
-				conn, err = ln.Accept()
-				if err != nil {
-					fmt.Println(err)
-					return
-				}
-				client.conn = conn
-			}
 		}
 	}()
 
-	if err := client.Run(key, iv); err != nil {
+	if err := client.Run(); err != nil {
 		fmt.Println(err)
 	}
 }
